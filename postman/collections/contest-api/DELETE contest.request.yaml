@@ -1,0 +1,5 @@
+$kind: http-request
+description: ""
+url: http://localhost:3000/contests/1
+method: DELETE
+order: 4448775768183216

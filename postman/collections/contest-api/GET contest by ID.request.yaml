@@ -1,0 +1,5 @@
+$kind: http-request
+description: ""
+url: http://localhost:3000/contests/1
+method: GET
+order: 3626809887387272

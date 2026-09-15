@@ -1,0 +1,15 @@
+$kind: http-request
+description: ""
+url: http://localhost:3000/contests/1
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "title": "Обновлённый конкурс",
+      "description": "Новое описание",
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-30",
+      "status": "finished"
+    }
+order: 3720092805629591

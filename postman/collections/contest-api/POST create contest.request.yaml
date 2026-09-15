@@ -1,0 +1,15 @@
+$kind: http-request
+description: ""
+url: http://localhost:3000/contests
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "title": "Фотоконкурс «Лето»",
+      "description": "Присылайте свои летние фото",
+      "startDate": "2026-06-01",
+      "endDate": "2026-08-31",
+      "status": "active"
+    }
+order: 3372780714261392
