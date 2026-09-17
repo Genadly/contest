@@ -1,0 +1,6 @@
+-- Active: 1789636413852@@127.0.0.1@8888@contest_db
+CREATE DATABASE contest_db;
+
+GRANT ALL PRIVILEGES ON DATABASE contest_db TO admin;
+
+SELECT * FROM "Contests";
