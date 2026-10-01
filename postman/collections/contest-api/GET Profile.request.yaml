@@ -1,0 +1,7 @@
+$kind: http-request
+description: ""
+url: http://localhost:3000/auth/profile
+method: GET
+headers:
+  Authorization: Bearer {{json_web_token_0px0}}
+order: 4501436129531199

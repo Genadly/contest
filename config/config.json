@@ -6,21 +6,5 @@
     "host": "localhost",
     "port": 8888,
     "dialect": "postgres"
-  },
-  "test": {
-    "username": "admin",
-    "password": "Aemd0185",
-    "database": "contest_db",
-    "host": "localhost",
-    "port": 8888,
-    "dialect": "postgres"
-  },
-  "production": {
-    "username": "admin",
-    "password": "Aemd0185",
-    "database": "contest_db",
-    "host": "localhost",
-    "port": 8888,
-    "dialect": "postgres"
   }
 }
