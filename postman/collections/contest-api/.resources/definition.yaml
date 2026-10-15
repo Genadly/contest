@@ -1,8 +1,0 @@
-$kind: collection
-variables:
-  - key: json_web_token_0px0
-    secret: true
-    disabled: false
-  - key: bearer_token_1049
-    secret: true
-    disabled: false
