@@ -1,105 +1,169 @@
-import styles from './ContestList.module.css';
 import { useState, useEffect } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
+import {
+  fetchContests,
+  createContest,
+  updateContest as apiUpdateContest,
+  deleteContest as apiDeleteContest
+} from '../api/contests';
+import { getProfile } from '../api/auth';
 import ContestForm from './ContestForm';
 import ContestItem from './ContestItem';
-
-const INITIAL_CONTESTS = [
-  { id: 1, title: 'Фотоконкурс «Лето 2026»', description: 'Лучшие летние снимки', status: 'active' },
-  { id: 2, title: 'Конкурс «Зимний пейзаж»', description: 'Голосование за зимнее фото', status: 'draft' }
-];
+import styles from './ContestList.module.css';
 
 export default function ContestList() {
-  // 1. Массив конкурсов в localStorage
-  const [contests, setContests] = useLocalStorage('contests', INITIAL_CONTESTS);
-
-  // 2. Состояние фильтра
-  const [filter, setFilter] = useState('all');
-
-  // 3. Состояние «идёт загрузка»
+  const [contests, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
 
-  // 4. Имитация загрузки с сервера (1 секунда)
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce поиска — 1500 мс
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);   // очистка при размонтировании
+    const timer = setTimeout(() => setDebouncedSearch(search), 1500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Загрузка конкурсов с гарантированной задержкой 1.5 сек
+  const loadContests = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [response] = await Promise.all([
+        fetchContests({ search: debouncedSearch }),
+        new Promise(resolve => setTimeout(resolve, 1500))
+      ]);
+      setContests(response.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Не удалось загрузить конкурсы');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Загрузка профиля — один раз при монтировании
+  const loadProfile = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    try {
+      const data = await getProfile();
+      setUser(data);
+    } catch {
+      setUser(null);
+    }
+  };
+
+  // Профиль загружаем один раз
+  useEffect(() => {
+    loadProfile();
   }, []);
 
-  // 5. Изменение заголовка страницы при изменении количества конкурсов
+  // Конкурсы — при изменении поиска (и при монтировании)
   useEffect(() => {
-    document.title = `Конкурсов: ${contests.length}`;
-  }, [contests.length]);
+    loadContests();
+  }, [debouncedSearch]);
 
-  // 6. Debounce-автосохранение (демонстрация, 500 мс)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log('Автосохранение выполнено:', contests.length);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [contests]);
+  const isAdmin = user?.role === 'admin';
 
-  // Операции
-  const addContest = (data) => {
-    const newContest = { id: Date.now(), ...data };
-    setContests([...contests, newContest]);
+  const addContest = async (data) => {
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = { id: tempId, ...data, status: data.status || 'draft' };
+    setContests(prev => [...prev, optimistic]);
+
+    try {
+      const { data: created } = await createContest(data);
+      setContests(prev => prev.map(c => c.id === tempId ? created : c));
+    } catch (err) {
+      setContests(prev => prev.filter(c => c.id !== tempId));
+      alert(err.response?.data?.error || 'Не удалось создать конкурс');
+    }
   };
 
-  const updateContest = (id, data) => {
-    setContests(contests.map(c =>
-      c.id === id ? { ...c, ...data } : c
-    ));
+  const deleteContest = async (id) => {
+    const removed = contests.find(c => c.id === id);
+    setContests(prev => prev.filter(c => c.id !== id));
+
+    try {
+      await apiDeleteContest(id);
+    } catch (err) {
+      setContests(prev => [...prev, removed].sort((a, b) => a.id - b.id));
+      alert(err.response?.data?.error || 'Не удалось удалить конкурс');
+    }
   };
 
-  const deleteContest = (id) => {
-    setContests(contests.filter(c => c.id !== id));
+  const updateContest = async (id, data) => {
+    const old = contests.find(c => c.id === id);
+    setContests(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+
+    try {
+      const { data: updated } = await apiUpdateContest(id, data);
+      setContests(prev => prev.map(c => c.id === id ? updated : c));
+    } catch (err) {
+      setContests(prev => prev.map(c => c.id === id ? old : c));
+      alert(err.response?.data?.error || 'Не удалось обновить конкурс');
+    }
   };
 
   const changeStatus = (id, status) => {
-    setContests(contests.map(c => c.id === id ? { ...c, status } : c));
+    const contest = contests.find(c => c.id === id);
+    if (!contest) return;
+    updateContest(id, {
+      title: contest.title,
+      description: contest.description,
+      status
+    });
   };
 
-  // Фильтрация
-  const filtered = filter === 'all'
-    ? contests
-    : contests.filter(c => c.status === filter);
+  if (loading) {
+    return <p className={styles.loading}>Загрузка…</p>;
+  }
 
-  if (loading) return <p className={styles.loading}>Загрузка…</p>;
-
+  if (error) {
     return (
-    <div className={styles.wrapper}>
-        <ContestForm onAdd={addContest} />
-
-        <div className={styles.controls}>
-        <select
-            className={styles.filter}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-        >
-            <option value="all">Все</option>
-            <option value="draft">Черновики</option>
-            <option value="active">Активные</option>
-            <option value="finished">Завершённые</option>
-        </select>
-        <p className={styles.stats}>
-            Всего: {contests.length} | Показано: {filtered.length}
-        </p>
-        </div>
-
-        {filtered.length === 0 ? (
-        <p className={styles.empty}>Конкурсов пока нет</p>
-        ) : (
-        <ul className={styles.list}>
-            {filtered.map(contest => (
-            <ContestItem
-                key={contest.id}
-                contest={contest}
-                onDelete={deleteContest}
-                onStatusChange={changeStatus}
-                onUpdate={updateContest}
-            />
-            ))}
-        </ul>
-        )}
-    </div>
+      <div className={styles.error}>
+        <p>{error}</p>
+        <button className={styles.retry} onClick={loadContests}>
+          Повторить
+        </button>
+      </div>
     );
+  }
+
+  return (
+    <div className={styles.wrapper}>
+      {isAdmin && <ContestForm onAdd={addContest} />}
+
+      <div className={styles.controls}>
+        <input
+          className={styles.search}
+          type="text"
+          placeholder="Поиск конкурсов…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <p className={styles.stats}>Всего: {contests.length}</p>
+      </div>
+
+      {contests.length === 0 ? (
+        <p className={styles.empty}>Конкурсов пока нет</p>
+      ) : (
+        <ul className={styles.list}>
+          {contests.map(contest => (
+            <ContestItem
+              key={contest.id}
+              contest={contest}
+              canEdit={isAdmin}
+              onDelete={deleteContest}
+              onUpdate={updateContest}
+              onStatusChange={changeStatus}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }

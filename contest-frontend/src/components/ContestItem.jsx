@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import styles from './ContestItem.module.css';
 
-export default function ContestItem({ contest, onDelete, onStatusChange, onUpdate }) {
+export default function ContestItem({
+  contest,
+  canEdit,
+  onDelete,
+  onUpdate,
+  onStatusChange
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(contest.title);
   const [description, setDescription] = useState(contest.description);
@@ -19,13 +25,12 @@ export default function ContestItem({ contest, onDelete, onStatusChange, onUpdat
   };
 
   const handleCancel = () => {
-    // Сбросить локальные состояния к исходным
     setTitle(contest.title);
     setDescription(contest.description);
     setIsEditing(false);
   };
 
-  // Режим редактирования — показываем поля ввода
+
   if (isEditing) {
     return (
       <li className={styles.item}>
@@ -42,35 +47,43 @@ export default function ContestItem({ contest, onDelete, onStatusChange, onUpdat
           placeholder="Описание"
         />
         <div className={styles.actions}>
-          <button className={styles.save} onClick={handleSave}>Сохранить</button>
-          <button className={styles.cancel} onClick={handleCancel}>Отмена</button>
+          <button className={styles.save} onClick={handleSave}>
+            Сохранить
+          </button>
+          <button className={styles.cancel} onClick={handleCancel}>
+            Отмена
+          </button>
         </div>
       </li>
     );
   }
 
-  // Обычный режим — карточка конкурса
+
   return (
     <li className={styles.item}>
       <h3 className={styles.title}>{contest.title}</h3>
       <p className={styles.description}>{contest.description}</p>
-      <div className={styles.actions}>
-        <select
-          className={styles.status}
-          value={contest.status}
-          onChange={(e) => onStatusChange(contest.id, e.target.value)}
-        >
-          <option value="draft">Черновик</option>
-          <option value="active">Активный</option>
-          <option value="finished">Завершён</option>
-        </select>
-        <button className={styles.edit} onClick={() => setIsEditing(true)}>
-          Редактировать
-        </button>
-        <button className={styles.delete} onClick={() => onDelete(contest.id)}>
-          Удалить
-        </button>
-      </div>
+      <p className={styles.status}>Статус: {contest.status}</p>
+
+      {canEdit && (
+        <div className={styles.actions}>
+          <select
+            className={styles.statusSelect}
+            value={contest.status}
+            onChange={(e) => onStatusChange(contest.id, e.target.value)}
+          >
+            <option value="draft">Черновик</option>
+            <option value="active">Активный</option>
+            <option value="finished">Завершён</option>
+          </select>
+          <button className={styles.edit} onClick={() => setIsEditing(true)}>
+            Редактировать
+          </button>
+          <button className={styles.delete} onClick={() => onDelete(contest.id)}>
+            Удалить
+          </button>
+        </div>
+      )}
     </li>
   );
 }
